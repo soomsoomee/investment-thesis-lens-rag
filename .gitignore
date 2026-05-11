@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# uv
+# .python-version is committed; venvs are not
+
+# env / secrets
+.env
+.env.local
+
+# Models & caches
+.cache/
+huggingface/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+.claude/
+
+# OS
+.DS_Store
