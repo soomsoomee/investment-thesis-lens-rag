@@ -31,3 +31,8 @@ dev = [
     "jupyter>=1.1.1",
     "pytest>=9.0.3",
 ]
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: tests that hit the real database, embedding model, or LLM",
+]
