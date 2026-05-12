@@ -19,6 +19,7 @@ Naive RAG study track over investment-domain YouTube transcripts.
    ```bash
    uv run python -m naive_rag.vectorstore ingest
    ```
+   The first run downloads the `BAAI/bge-m3` embedding model (~2.3 GB) into `~/.cache/huggingface/` and may take a few minutes. Subsequent runs use the cached model.
 4. Open the walkthrough notebook:
    ```bash
    uv run jupyter lab notebooks/01_naive_rag_walkthrough.ipynb

@@ -2,11 +2,9 @@
 
 Date: 2026-05-11
 Track: Study (Track B)
-Status: Draft → 사용자 리뷰 대기
+Status: Implemented (2026-05-12)
 
-> 본 문서는 스터디 트랙 산출물이라 `docs/superpowers/study/`(gitignored)에 위치한다.
-> 메인 프로젝트 spec과 코드 의존성 없음. 다만 인프라(Docker PostgreSQL+pgvector)는 공유한다.
-> 선행 spec: [2026-04-29-naive-rag.md](2026-04-29-naive-rag.md) — 본 spec이 일부 결정을 갱신한다.
+> 본 문서는 본 repo의 설계 문서이다. 메인 프로젝트와 코드 의존성 없음. 인프라(Docker PostgreSQL+pgvector)는 공유한다.
 
 ---
 
