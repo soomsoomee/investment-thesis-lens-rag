@@ -20,11 +20,11 @@
 | Q5 | 최근 폭락한 미국 초우량주 중 매수 후보로 본 종목은? |
 | Q6 | 헬스케어 섹터(유나이티드헬스, 노보노 등)에 대한 시각은? |
 | Q7 | 인텔, AMD, ARM 등 반도체 종목에 대한 평가는? |
-| Q8 | 오라클을 매도한 이유는? |
+| Q8 | GTC 워싱턴 행사에서 엔비디아가 발표한 신규 사업 영역은? |
 | Q9 | 2030년까지 컴퓨팅 용량 확장과 AI 인프라 전망은? |
 | Q10 | 빅테크(아마존, 구글, 엔비디아) 중 AI 투자에 가장 적극적인 곳은? |
 
 ## 평가 방식
 
 - Phase 1: 정성 평가 — 노트북에서 질문별 답변 및 retrieved chunk 출력 확인.
-- Phase 2 (현재): ragas 4 metric (Faithfulness, AnswerRelevancy, LLMContextPrecisionWithoutReference, ContextEntityRecall). 마지막 셀에서 `eval_data` reference 채운 뒤 실행.
+- Phase 2 (현재): ragas 4 metric (Faithfulness, AnswerRelevancy, LLMContextPrecisionWithoutReference, ContextEntityRecall). 노트북 마지막 셀에 `eval_data`의 10개 reference가 미리 채워져 있다(transcript 내용 기반). 그대로 실행하거나 본인 시각으로 수정해서 재실행 가능.
