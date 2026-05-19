@@ -1,5 +1,5 @@
 import sys
-from typing import Optional
+from typing import Optional, Sequence
 
 from langchain_postgres import PGVector
 
@@ -9,20 +9,24 @@ from naive_rag.loader import load_transcripts
 from naive_rag.splitter import split_documents
 
 
-def build_vectorstore() -> PGVector:
+def build_vectorstore(collection_name: Optional[str] = None) -> PGVector:
     settings = Settings()
     return PGVector(
         embeddings=build_embeddings(),
-        collection_name=settings.collection_name,
+        collection_name=collection_name or settings.collection_name,
         connection=settings.main_database_url,
         use_jsonb=True,
     )
 
 
-def ingest(limit: Optional[int] = None) -> int:
-    docs = load_transcripts(limit=limit)
+def ingest(
+    limit: Optional[int] = None,
+    collection_name: Optional[str] = None,
+    content_ids: Optional[Sequence[str]] = None,
+) -> int:
+    docs = load_transcripts(limit=limit, content_ids=content_ids)
     chunks = split_documents(docs)
-    vs = build_vectorstore()
+    vs = build_vectorstore(collection_name=collection_name)
     vs.add_documents(chunks)
     return len(chunks)
 

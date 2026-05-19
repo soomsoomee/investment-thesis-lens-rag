@@ -1,3 +1,5 @@
+from typing import Optional
+
 from langchain_core.documents import Document
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -27,9 +29,9 @@ def _format_docs(docs: list[Document]) -> str:
     )
 
 
-def build_chain() -> Runnable:
+def build_chain(collection_name: Optional[str] = None) -> Runnable:
     settings = Settings()
-    retriever = build_retriever()
+    retriever = build_retriever(collection_name=collection_name)
     prompt = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
     llm = ChatOpenAI(
         model=settings.llm_model,
