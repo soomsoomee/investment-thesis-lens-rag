@@ -64,7 +64,7 @@
 
 ---
 
-## 5. 메타데이터 활용 아이디어 (과제 #5, 5주차 활용 예정)
+## 5. 메타데이터 활용 아이디어
 
 4주차에 추가한 메타데이터: `chunk_index`, `chunk_total`, `chunk_token_count` (+ 기존 `content_id`, `title`, `channel`, `published_at` = 총 7개). vector store 검증은 `week4_chunking_experiments.ipynb` cell 7에서 chunk 1개를 출력해 7 필드 모두 확인.
 
@@ -75,8 +75,7 @@
 
 ---
 
-## 6. RAGAS 점수 해석 회고 (과제 #6)
-
+## 6. RAGAS 점수 해석 회고 
 
 ### 3주차 baseline 대비 변화
 
