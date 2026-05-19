@@ -79,7 +79,8 @@
 - **`chunk_index` / `chunk_total`**: retrieve된 chunk의 ±1 chunk를 함께 LLM에 넘기는 "neighbor expansion". 한 영상에서 같은 화제가 연속해서 펼쳐지는 transcript 특성상 유효할 가능성이 큼. 회고 §1의 도입부 노이즈 chunk를 본문 쪽으로 펼쳐 의미를 보강하는 효과도 기대.
 - **`chunk_token_count`**: retrieval 결과 합산 토큰 모니터링 → LLM context window 초과 방지 및 비용 예측. `tiktoken` 기반이라 OpenAI 모델 토큰과 직결.
 - **`published_at`**: 시점 가중치(최근 발화 우선)로 query에 따라 retrieval rank 보정. 이미 chain에서 답변 출처 표시로는 활용 중 (`[chain.py](../src/naive_rag/chain.py)` `_format_docs`).
-- **derived 필드**: `chunk_index / chunk_total`로 정규화 위치(도입부 0.0 ~ 꼬리 1.0)를 계산하면 회고 §1에서 다룬 도입부·꼬리 노이즈를 필터/down-weight 가능 (e.g., position 0~0.05, 0.95~1.0 chunk는 retrieval rank에서 -1).
+- **derived 필드 — `position_ratio`**: `chunk_index / chunk_total`로 정규화 위치(도입부 0.0 ~ 꼬리 1.0)를 계산. 회고 §1 가설 1(꼬리 광고/CTA 제거)과 직접 연결 — `position > 0.9` chunk를 retrieval rank에서 down-weight 또는 ingest 단계에서 cut. Q4·Q10 같은 도입부·꼬리 노이즈 retrieve 직접 차단.
+- **신규 필드 후보 — `chunk_utility_score`** (회고 §1 가설 2): chunk가 일반 인사·예고·CTA 멘트(low utility)인지 vs 정보 dense(high utility)인지 LLM classifier 또는 keyword/embedding 기반 score로 분류해 메타데이터로 저장. retrieve 시 가중치 또는 filter로 활용. 5주차에 시험 구현 후보.
 
 ---
 
@@ -117,8 +118,13 @@
 **의외의 발견**: 같은 size(600)에선 한국어 separators(C)가 분명한 개선을 주는데, 큰 size(1500)에선 그 효과가 사라진다. → "한국어 separators 보강"이라는 처방은 **small chunk 한정 유효**.
 
 ### 5주차 retrieval 고도화에서 시도하고 싶은 것
-1. **Neighbor expansion** (`chunk_index` 활용): retrieve된 chunk의 ±1 chunk를 같이 LLM에 넘김. 회고 §5 첫 아이디어.
-2. **Hybrid retrieval**: BM25(키워드 정확 매치) + dense(의미) 가중 결합. 종목/숫자/고유명사(엔비디아, GTC, 30GW 같은) 정확 매치 강화.
-3. **Multi-query rewriting**: 광범위 query를 sub-query로 쪼개 retrieve (Q1 같은 케이스). LLM이 쿼리 분해.
-4. **Cross-encoder rerank**: 1차 retrieve 결과를 rerank 모델로 정렬. 회고 §1 misretrieve 직접 해결.
-5. **Position-aware filter**: `chunk_index / chunk_total`로 도입부·꼬리 chunk down-weight. 회고 §1·§5 결합.
+
+§1 가설 2개를 5주차 작업으로 옮긴다:
+
+1. **Preprocessing: 꼬리 광고/CTA 제거** (§1 가설 1 구현). ingest 전 단계에서 keyword detection ("특강 고정댓글", "카페에 올려둘게요", "댓글에 남겨놓을게요", "구독", "좋아요" 등)으로 문장 제거하거나 영상 꼬리 ~10% cut. Q4 같은 명백한 노이즈 직접 차단. 가장 가벼운 처방이라 5주차 1순위.
+2. **`chunk_utility_score` 메타데이터** (§1 가설 2 + §5 후보): LLM classifier 또는 keyword/embedding 기반으로 chunk를 high/low utility로 분류해 메타데이터로 저장. retrieve 시 score 가중치 또는 threshold filter. Q10 도입부 멘트 같은 케이스 처리.
+3. **Neighbor expansion** (`chunk_index` 활용, §5 첫 아이디어): retrieve된 chunk의 ±1 chunk를 같이 LLM에 넘김. 큰 chunk(1500) 위에서는 효과가 작을 수 있어 small chunk 전략과 함께 시험.
+4. **Hybrid retrieval (BM25 + dense)**: 키워드 정확 매치 + 의미 매치 가중 결합. 종목/숫자/고유명사(엔비디아, GTC, 30GW 등) 정확 매치 강화.
+5. **Multi-query rewriting**: 광범위 query를 sub-query로 쪼개 retrieve (Q1 같은 broad query 케이스). LLM으로 쿼리 분해 후 결과 union/rerank.
+6. **Cross-encoder rerank**: 1차 dense retrieve(top-k 큰 값) 후 cross-encoder로 정렬. 회고 §1 misretrieve의 일반적 해결책.
+7. **Position-aware filter** (`position_ratio` derived 필드, §5 derived 필드): 도입부·꼬리 chunk down-weight. §1 가설 1의 정량 버전 — preprocessing cut 대신 retrieval rank에서 처리.
