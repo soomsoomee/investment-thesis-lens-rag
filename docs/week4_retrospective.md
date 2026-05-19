@@ -2,11 +2,10 @@
 
 > 산출 노트북: [week4_data_analysis.ipynb](../notebooks/week4_data_analysis.ipynb), [week4_chunking_experiments.ipynb](../notebooks/week4_chunking_experiments.ipynb)
 
-대상 데이터: 소수몽키 YouTube transcript 5건 (3주차에 사용한 그 5건을 `WEEK4_CONTENT_IDS`로 고정).
 
 ---
 
-## 1. 3주차 Baseline 회고 (과제 #1)
+## 1. 3주차 Baseline 회고
 
 `study_naive_rag` collection에서 5건 `WEEK4_CONTENT_IDS`로 metadata filter한 후 10개 질문에 대해 k=4로 retrieve한 결과를 훑어봤다 (`week4_chunking_experiments.ipynb` cell 2). 대부분 retrieve는 정확했지만 명백히 잘못된/노이즈인 사례 3건:
 
@@ -24,11 +23,10 @@
 ### 데이터 전처리 관점 개선 가설 (1-2개)
 
 1. **꼬리 광고/CTA 패턴 제거 (preprocessing)** — 영상 꼬리 ~10% 자르거나, keyword detection으로 "특강 고정댓글", "카페에 올려둘게요", "댓글에 남겨놓을게요", "구독", "좋아요" 같은 패턴을 포함한 문장들을 ingest 전에 제거. Q4 같은 명백한 노이즈가 직접 해결됨.
-2. **chunk 단위 utility/density 점수 메타데이터** — chunk가 일반 인사·예고·CTA 멘트인지(low utility) vs 정보 dense인지(high utility) 분류 후 메타데이터로 저장 → retrieve 시 가중치 또는 filter로 활용. Q10 도입부 멘트 같은 케이스에 효과적.
 
 ---
 
-## 2. 데이터 품질 진단 요약 (과제 #2)
+## 2. 데이터 품질 진단 요약 
 
 (상세는 [week4_data_analysis.ipynb](../notebooks/week4_data_analysis.ipynb) cell 7 참고)
 
@@ -36,20 +34,15 @@
 
 ---
 
-## 3. 전략 C·D 선택 이유 (과제 #4)
+## 3. 청킹 전략 선택 이유
 
-**전략 C/D 모두 `RecursiveCharacterTextSplitter` + 한국어 종결어미 우선 separators 보강** (`["다. ", "요. ", "습니다.", "다.", "요.", ". ", " ", ""]`). C는 600/100, D는 1500/300.
+** `RecursiveCharacterTextSplitter` + 한국어 종결어미 우선 separators 보강** (`["다. ", "요. ", "습니다.", "다.", "요.", ". ", " ", ""]`). C는 600/100, D는 1500/300.
 
-데이터 진단에서 `\n\n`/`\n`가 0개이고 한국어 종결어미가 풍부하다는 결과를 토대로, baseline의 "한국어 marker 부재" 약점을 직접 해결하는 가장 가벼운 방법을 우선 채택. 대안으로 `kiwipiepy`(한국어 형태소 기반)와 `SemanticChunker`(임베딩 거리 기반)도 검토했으나:
-- 의존성 0
-- A·B와 **동일 클래스·`separators`만 변경**이라 변수 격리가 깔끔(같은 splitter 종류, 같은 retriever, 같은 chain에서 separators 단독 효과 측정 가능)
-- D를 추가해 (size 600 vs 1500) × (separators baseline vs 한국어)의 **2x2 design**으로 두 변수의 독립 효과 + 상호작용 측정 가능
-
-`kiwipiepy`/`SemanticChunker`는 5주차 retrieval 고도화에서 다시 후보로 검토 가능.
+데이터 진단에서 `\n\n`/`\n`가 0개이고 한국어 종결어미가 풍부하다는 결과를 토대로, baseline의 "한국어 marker 부재" 약점을 직접 해결하는 가장 가벼운 방법을 우선 채택. 
 
 ---
 
-## 4. Chunking 비교 실험 결과 (과제 #4)
+## 4. Chunking 비교 실험 결과 
 
 | strategy | splitter | chunk_size | overlap | chunk_count | Faithfulness | AnswerRelevancy | LLMContextPrecisionWithReference | LLMContextRecall |
 |---|---|---|---|---|---|---|---|---|
@@ -79,18 +72,13 @@
 - **`chunk_index` / `chunk_total`**: retrieve된 chunk의 ±1 chunk를 함께 LLM에 넘기는 "neighbor expansion". 한 영상에서 같은 화제가 연속해서 펼쳐지는 transcript 특성상 유효할 가능성이 큼. 회고 §1의 도입부 노이즈 chunk를 본문 쪽으로 펼쳐 의미를 보강하는 효과도 기대.
 - **`chunk_token_count`**: retrieval 결과 합산 토큰 모니터링 → LLM context window 초과 방지 및 비용 예측. `tiktoken` 기반이라 OpenAI 모델 토큰과 직결.
 - **`published_at`**: 시점 가중치(최근 발화 우선)로 query에 따라 retrieval rank 보정. 이미 chain에서 답변 출처 표시로는 활용 중 (`[chain.py](../src/naive_rag/chain.py)` `_format_docs`).
-- **derived 필드 — `position_ratio`**: `chunk_index / chunk_total`로 정규화 위치(도입부 0.0 ~ 꼬리 1.0)를 계산. 회고 §1 가설 1(꼬리 광고/CTA 제거)과 직접 연결 — `position > 0.9` chunk를 retrieval rank에서 down-weight 또는 ingest 단계에서 cut. Q4·Q10 같은 도입부·꼬리 노이즈 retrieve 직접 차단.
-- **신규 필드 후보 — `chunk_utility_score`** (회고 §1 가설 2): chunk가 일반 인사·예고·CTA 멘트(low utility)인지 vs 정보 dense(high utility)인지 LLM classifier 또는 keyword/embedding 기반 score로 분류해 메타데이터로 저장. retrieve 시 가중치 또는 filter로 활용. 5주차에 시험 구현 후보.
 
 ---
 
 ## 6. RAGAS 점수 해석 회고 (과제 #6)
 
-> 주의: 4주차 실험은 chunking 외 chain 변경(`_format_docs`에 `published_at` 추가 + prompt에 `[출처]` 섹션 지시)도 함께 들어갔다. 3주차 baseline과의 점수 차이는 "chunking + chain 변경의 합산 효과"이며, 4주차 5 strategy 내 비교는 같은 chain 위에서 chunking 단독 변수 측정이다.
 
 ### 3주차 baseline 대비 변화
-
-4주차의 strategy A는 3주차와 같은 chunking 설정(600/100, baseline separators)이지만, **chain 변경**(`_format_docs`에 `published_at` 추가 + prompt `[출처]` 지시)이 함께 적용되어 있다. 따라서 A vs 3주차의 점수 차이는 "chain 변경 + 같은 chunking" 효과로 봐야 하며, A는 4주차 실험의 안쪽 baseline 역할을 한다. 다른 4 strategy(B-small/B-large/C/D)는 A와 같은 chain 위에서 chunking 단독 변수 비교다.
 
 대부분의 지표가 B-large/D에서 A 대비 크게 개선:
 - **AnswerRelevancy**: A 0.467 → B-large 0.629 (+35%) / D 0.618 (+32%) — A가 압도적 worst.
@@ -100,7 +88,7 @@
 
 ### 변화가 왜 일어났는가 (가설)
 
-1. **Size가 dominant 변수 (ContextRecall 기준)**: 600→1500으로 키울 때 Recall +0.25(baseline separators) / +0.108(한국어 separators). 한국어 transcript는 한 화제가 길게 펼쳐지는 발화 특성이라, 답에 필요한 정보가 작은 chunk(600)에는 잘려서 들어가는 반면 큰 chunk(1500)에는 한 chunk 안에 다 들어간다.
+1. **Size가 dominant 변수 (ContextRecall 기준)**: 600→1500으로 키울 때 Recall +0.25(baseline separators) / +0.108(한국어 separators). 한국어 transcript는 한 화제가 길게 펼쳐지는 발화 특성이라, 답에 필요한 정보가 작은 chunk(600)에는 잘려서 들어가는 반면 큰 chunk(1500)에는 한 chunk 안에 다 들어간다. 앞뒤로 유튜브 멘트 있는 것도 청크 자체를 크게 줘버리면 문제 완화됨. 
 2. **한국어 separators는 small chunk에서만 유의미**: 600에서 A→C로 Recall +0.117 명확한 효과. 1500에서 B-large→D는 -0.025로 사실상 무차이. **큰 chunk가 한국어 marker 효과를 흡수**한다(어차피 종결어미 여러 번 포함하는 큰 단위라 separators 보강이 결정적 차이 못 만듦).
 3. **B-small이 Faithfulness worst (0.887)**: chunk가 너무 작으면 의미 단위가 깨져 LLM이 부분 정보로 추측 → 답변의 사실성 떨어짐. "small chunk + 한국어 marker 부재"가 가장 위험.
 4. **ContextPrecision은 큰 chunk에서 약간 떨어짐**(B-large 0.944, D 0.972): 큰 chunk는 답에 필요한 정보 외 다른 화제도 함께 포함 → "검색된 chunk가 질문에 직접 도움 되는 비율"이 살짝 낮아짐. 단 차이 미미.
@@ -127,4 +115,3 @@
 4. **Hybrid retrieval (BM25 + dense)**: 키워드 정확 매치 + 의미 매치 가중 결합. 종목/숫자/고유명사(엔비디아, GTC, 30GW 등) 정확 매치 강화.
 5. **Multi-query rewriting**: 광범위 query를 sub-query로 쪼개 retrieve (Q1 같은 broad query 케이스). LLM으로 쿼리 분해 후 결과 union/rerank.
 6. **Cross-encoder rerank**: 1차 dense retrieve(top-k 큰 값) 후 cross-encoder로 정렬. 회고 §1 misretrieve의 일반적 해결책.
-7. **Position-aware filter** (`position_ratio` derived 필드, §5 derived 필드): 도입부·꼬리 chunk down-weight. §1 가설 1의 정량 버전 — preprocessing cut 대신 retrieval rank에서 처리.
