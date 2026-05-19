@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Sequence
 
 from langchain_core.documents import Document
 from sqlalchemy import create_engine, text
@@ -6,9 +6,13 @@ from sqlalchemy import create_engine, text
 from naive_rag.config import Settings
 
 
-def load_transcripts(limit: Optional[int] = None) -> list[Document]:
+def load_transcripts(
+    limit: Optional[int] = None,
+    content_ids: Optional[Sequence[str]] = None,
+) -> list[Document]:
     settings = Settings()
     engine = create_engine(settings.main_database_url)
+
     sql = """
         SELECT
             c.id AS id,
@@ -19,14 +23,18 @@ def load_transcripts(limit: Optional[int] = None) -> list[Document]:
         FROM contents c
         LEFT JOIN personas p ON p.id = c.persona_id
         WHERE c.transcript IS NOT NULL AND c.transcript <> ''
-        ORDER BY c.published_at DESC NULLS LAST
     """
+    params: dict = {}
+    if content_ids:
+        sql += " AND c.id::text = ANY(:content_ids)"
+        params["content_ids"] = list(content_ids)
+    sql += " ORDER BY c.published_at DESC NULLS LAST"
     if limit is not None:
         sql += f" LIMIT {int(limit)}"
 
     docs: list[Document] = []
     with engine.connect() as conn:
-        rows = conn.execute(text(sql)).mappings().all()
+        rows = conn.execute(text(sql), params).mappings().all()
     for row in rows:
         metadata = {
             "content_id": str(row["id"]),
