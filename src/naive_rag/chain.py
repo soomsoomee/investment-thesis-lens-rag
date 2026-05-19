@@ -12,6 +12,8 @@ from naive_rag.retriever import build_retriever
 PROMPT_TEMPLATE = """당신은 투자 분석 트랜스크립트를 참고해 한국어로 답하는 도우미입니다.
 아래 컨텍스트만 사용해 질문에 답하세요. 컨텍스트에 답이 없으면 "주어진 자료로는 알 수 없습니다."라고 답하세요.
 
+답변 끝에는 반드시 `[출처]` 섹션을 두고, 참고한 영상의 게시일과 제목을 한 줄씩 적으세요 (예: `- 2026-04-28 빅테크 AI 투자 전쟁 수혜주`).
+
 [컨텍스트]
 {context}
 
@@ -24,7 +26,7 @@ PROMPT_TEMPLATE = """당신은 투자 분석 트랜스크립트를 참고해 한
 
 def _format_docs(docs: list[Document]) -> str:
     return "\n\n---\n\n".join(
-        f"({d.metadata.get('channel', '?')} / {d.metadata.get('title', '?')})\n{d.page_content}"
+        f"({d.metadata.get('channel', '?')} / {d.metadata.get('published_at', '?')} / {d.metadata.get('title', '?')})\n{d.page_content}"
         for d in docs
     )
 
