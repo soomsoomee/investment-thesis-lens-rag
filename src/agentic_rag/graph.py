@@ -7,7 +7,12 @@ from langgraph.graph import END, START, StateGraph
 from agentic_rag import nodes
 from agentic_rag.preprocess import build_clean_vectorstore
 from agentic_rag.retrieval import build_clean_retriever
-from agentic_rag.state import GraphState, route_after_grade, route_after_reflect
+from agentic_rag.state import (
+    GraphState,
+    route_after_analyze,
+    route_after_grade,
+    route_after_reflect,
+)
 from naive_rag.config import Settings
 
 
@@ -16,7 +21,7 @@ def _llm() -> ChatOpenAI:
     return ChatOpenAI(model=s.llm_model, api_key=s.openai_api_key, temperature=0)
 
 
-def build_graph(with_reflect: bool = False):
+def build_graph(with_reflect: bool = False, adaptive: bool = False):
     retriever = build_clean_retriever()
     vs = build_clean_vectorstore()
     llm = _llm()
@@ -27,7 +32,19 @@ def build_graph(with_reflect: bool = False):
     g.add_node("rewrite_query", partial(nodes.rewrite_node, llm=llm))
     g.add_node("generate", partial(nodes.generate_node, llm=llm))
 
-    g.add_edge(START, "retrieve")
+    if adaptive:
+        # 진입부 router: 단답이면 바로 retrieve, 복합이면 multi-query 분해 후 retrieve
+        g.add_node("analyze_query", partial(nodes.analyze_query_node, llm=llm))
+        g.add_node("decompose", partial(nodes.decompose_node, llm=llm))
+        g.add_edge(START, "analyze_query")
+        g.add_conditional_edges(
+            "analyze_query",
+            route_after_analyze,
+            {"decompose": "decompose", "retrieve": "retrieve"},
+        )
+        g.add_edge("decompose", "retrieve")
+    else:
+        g.add_edge(START, "retrieve")
     g.add_edge("retrieve", "grade_documents")
     g.add_conditional_edges(
         "grade_documents",

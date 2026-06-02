@@ -32,3 +32,16 @@ def test_initial_state_shape():
     assert s["retry_count"] == 0
     assert s["sub_queries"] == []
     assert s["documents"] == []
+    assert s["complexity"] == ""
+
+
+def test_route_after_analyze_complex_goes_decompose():
+    from agentic_rag.state import route_after_analyze
+
+    assert route_after_analyze(_state(complexity="complex")) == "decompose"
+
+
+def test_route_after_analyze_simple_goes_retrieve():
+    from agentic_rag.state import route_after_analyze
+
+    assert route_after_analyze(_state(complexity="simple")) == "retrieve"

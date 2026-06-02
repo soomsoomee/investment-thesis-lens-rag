@@ -13,6 +13,7 @@ REFUSAL = "제공된 문서에서는 해당 질문에 대한 근거를 확인할
 class GraphState(TypedDict):
     question: str
     sub_queries: list[str]
+    complexity: str
     documents: list[Document]
     answer: str
     grade_result: str
@@ -25,6 +26,7 @@ def initial_state(question: str) -> GraphState:
     return {
         "question": question,
         "sub_queries": [],
+        "complexity": "",
         "documents": [],
         "answer": "",
         "grade_result": "",
@@ -32,6 +34,10 @@ def initial_state(question: str) -> GraphState:
         "route_history": [],
         "latency": 0.0,
     }
+
+
+def route_after_analyze(state: GraphState) -> str:
+    return "decompose" if state["complexity"] == "complex" else "retrieve"
 
 
 def route_after_grade(state: GraphState) -> str:
